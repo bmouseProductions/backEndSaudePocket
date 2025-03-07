@@ -23,10 +23,10 @@ export class MailService {
     const mailOptions = {
       from: this.configService.get<string>('EMAIL_USER'),
       to: this.configService.get<string>('EMAIL_USER'),
-      subject: `Novo Cadastro de Colunista - ${nome}`,
+      subject: `Info Produto - ${nome}`,
       html: `
   <div style="font-family: Arial, sans-serif; color: #333;">
-    <h2 style="color: #007bff;">Novo Cadastro de Colunista</h2>
+    <h2 style="color: #007bff;">Info Produto</h2>
     <table style="width: 100%; border-collapse: collapse;">
       <tr>
         <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nome Completo:</strong></td>
@@ -73,4 +73,50 @@ export class MailService {
       throw new Error('Erro ao enviar e-mail');
     }
   }
+
+  async novoEmail(formData2: any) {
+    const { nome, email, telefone, especialidade, experiencia } = formData2;
+  
+    const mailOptions2 = {
+      from: this.configService.get<string>('EMAIL_USER'),
+      to: this.configService.get<string>('EMAIL_USER'),
+      subject: `Proposta Novo Colunista - ${nome}`,
+      html: `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #007bff;">Proposta Novo Colunista</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nome Completo:</strong></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${nome}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>E-mail Profissional:</strong></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${email}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Telefone/WhatsApp:</strong></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${telefone}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Especialidade:</strong></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${especialidade}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Experiencia profissional</strong></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${experiencia}</td>
+          </tr>
+        </table>
+      </div>
+      `,
+    };
+  
+    try {
+      await this.transporter.sendMail(mailOptions2);
+      return { message: 'E-mail enviado com sucesso!' };
+    } catch (error) {
+      console.error('Erro ao enviar e-mail:', error);
+      throw new Error('Erro ao enviar e-mail');
+    }
+  }
+  
 }
