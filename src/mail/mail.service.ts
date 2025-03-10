@@ -75,7 +75,7 @@ export class MailService {
   }
 
   async novoEmail(formData2: any) {
-    const { nome, email, telefone, especialidade, experiencia } = formData2;
+    const { nome, email, telefone, especialidade, tema, experiencia } = formData2;
   
     const mailOptions2 = {
       from: this.configService.get<string>('EMAIL_USER'),
@@ -96,6 +96,10 @@ export class MailService {
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd;"><strong>Telefone/WhatsApp:</strong></td>
             <td style="padding: 8px; border: 1px solid #ddd;">${telefone}</td>
+          </tr>
+                    <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Tema escolhido:</strong></td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${tema}</td>
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd;"><strong>Especialidade:</strong></td>
