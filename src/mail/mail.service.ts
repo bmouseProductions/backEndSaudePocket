@@ -1,11 +1,15 @@
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MailService {
   private transporter: nodemailer.Transporter;
+  private mailchimpUrl: string;
+  private mailchimpApiKey: string;
+  private mailchimpAudienceId: string;
 
   constructor(private readonly configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
@@ -15,6 +19,10 @@ export class MailService {
         pass: this.configService.get<string>('EMAIL_PASS'),
       },
     });
+
+    this.mailchimpApiKey = this.configService.get<string>('MAILCHIMP_API_KEY');
+    this.mailchimpAudienceId = this.configService.get<string>('MAILCHIMP_AUDIENCE_ID');
+    this.mailchimpUrl = this.configService.get<string>('MAILCHIMP_API_URL') + `/lists/${this.mailchimpAudienceId}/members`;
   }
 
   async sendEmail(formData: any) {
@@ -25,102 +33,99 @@ export class MailService {
       to: this.configService.get<string>('EMAIL_USER'),
       subject: `Info Produto - ${nome}`,
       html: `
-  <div style="font-family: Arial, sans-serif; color: #333;">
-    <h2 style="color: #007bff;">Info Produto</h2>
-    <table style="width: 100%; border-collapse: collapse;">
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nome Completo:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${nome}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>E-mail Profissional:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${email}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>Telefone/WhatsApp:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${telefone}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nome do Projeto:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${projeto}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>O que será ensinado:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${ensinado}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>Por quanto você pretende vender:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${vender}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>Modalidade de venda:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${modalidade}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px; border: 1px solid #ddd;"><strong>Mensagem:</strong></td>
-        <td style="padding: 8px; border: 1px solid #ddd;">${mensagem}</td>
-      </tr>
-    </table>
-  </div>
-`,
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2 style="color: #007bff;">Info Produto</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td><strong>Nome:</strong></td><td>${nome}</td></tr>
+            <tr><td><strong>E-mail:</strong></td><td>${email}</td></tr>
+            <tr><td><strong>Telefone:</strong></td><td>${telefone}</td></tr>
+            <tr><td><strong>Projeto:</strong></td><td>${projeto}</td></tr>
+            <tr><td><strong>O que será ensinado:</strong></td><td>${ensinado}</td></tr>
+            <tr><td><strong>Valor de venda:</strong></td><td>${vender}</td></tr>
+            <tr><td><strong>Modalidade:</strong></td><td>${modalidade}</td></tr>
+            <tr><td><strong>Mensagem:</strong></td><td>${mensagem}</td></tr>
+          </table>
+        </div>
+      `,
     };
 
     try {
       await this.transporter.sendMail(mailOptions);
-      return { message: 'E-mail enviado com sucesso!' };
+
+      // Enviar para Mailchimp com tag "info_produto"
+      const data = {
+        email_address: email,
+        status: 'subscribed',
+        merge_fields: {
+          FNAME: nome,
+          PHONE: telefone,
+          PROJETO: projeto,
+          ENSINADO: ensinado,
+          VENDER: vender,
+          MODALIDADE: modalidade,
+          MENSAGEM: mensagem,
+        },
+        tags: ['info_produto'], // 🔥 TAG personalizada para Mailchimp
+      };
+
+      await axios.post(this.mailchimpUrl, data, {
+        auth: { username: 'anystring', password: this.mailchimpApiKey },
+      });
+
+      return { message: 'E-mail enviado e usuário cadastrado no Mailchimp!' };
     } catch (error) {
-      console.error('Erro ao enviar e-mail:', error);
-      throw new Error('Erro ao enviar e-mail');
+      console.error('Erro:', error.response?.data || error.message);
+      throw new Error('Erro ao processar solicitação');
     }
   }
 
   async novoEmail(formData2: any) {
     const { nome, email, telefone, especialidade, tema, experiencia } = formData2;
-  
+
     const mailOptions2 = {
       from: this.configService.get<string>('EMAIL_USER'),
       to: this.configService.get<string>('EMAIL_USER'),
       subject: `Proposta Novo Colunista - ${nome}`,
       html: `
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #007bff;">Proposta Novo Colunista</h2>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Nome Completo:</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${nome}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;"><strong>E-mail Profissional:</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${email}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Telefone/WhatsApp:</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${telefone}</td>
-          </tr>
-                    <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Tema escolhido:</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${tema}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Especialidade:</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${especialidade}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #ddd;"><strong>Experiencia profissional</strong></td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${experiencia}</td>
-          </tr>
-        </table>
-      </div>
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2 style="color: #007bff;">Proposta Novo Colunista</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td><strong>Nome:</strong></td><td>${nome}</td></tr>
+            <tr><td><strong>E-mail:</strong></td><td>${email}</td></tr>
+            <tr><td><strong>Telefone:</strong></td><td>${telefone}</td></tr>
+            <tr><td><strong>Tema:</strong></td><td>${tema}</td></tr>
+            <tr><td><strong>Especialidade:</strong></td><td>${especialidade}</td></tr>
+            <tr><td><strong>Experiência:</strong></td><td>${experiencia}</td></tr>
+          </table>
+        </div>
       `,
     };
-  
+
     try {
       await this.transporter.sendMail(mailOptions2);
-      return { message: 'E-mail enviado com sucesso!' };
+
+      // Enviar para Mailchimp com tag "novo_colunista"
+      const data = {
+        email_address: email,
+        status: 'subscribed',
+        merge_fields: {
+          FNAME: nome,
+          PHONE: telefone,
+          ESPECIALIDADE: especialidade,
+          TEMA: tema,
+          EXPERIENCIA: experiencia,
+        },
+        tags: ['novo_colunista'], // 🔥 TAG personalizada para Mailchimp
+      };
+
+      await axios.post(this.mailchimpUrl, data, {
+        auth: { username: 'anystring', password: this.mailchimpApiKey },
+      });
+
+      return { message: 'E-mail enviado e usuário cadastrado no Mailchimp!' };
     } catch (error) {
-      console.error('Erro ao enviar e-mail:', error);
-      throw new Error('Erro ao enviar e-mail');
+      console.error('Erro:', error.response?.data || error.message);
+      throw new Error('Erro ao processar solicitação');
     }
   }
-  
 }
