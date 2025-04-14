@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class MailService {
@@ -21,12 +22,29 @@ export class MailService {
     });
 
     this.mailchimpApiKey = this.configService.get<string>('MAILCHIMP_API_KEY');
-    this.mailchimpAudienceId = this.configService.get<string>('MAILCHIMP_AUDIENCE_ID');
-    this.mailchimpUrl = this.configService.get<string>('MAILCHIMP_API_URL') + `/lists/${this.mailchimpAudienceId}/members`;
+    this.mailchimpAudienceId = this.configService.get<string>(
+      'MAILCHIMP_AUDIENCE_ID',
+    );
+    this.mailchimpUrl =
+      this.configService.get<string>('MAILCHIMP_API_URL') +
+      `/lists/${this.mailchimpAudienceId}/members`;
+  }
+
+  private getSubscriberHash(email: string): string {
+    return crypto.createHash('md5').update(email.toLowerCase()).digest('hex');
   }
 
   async sendEmail(formData: any) {
-    const { nome, email, telefone, projeto, ensinado, vender, modalidade, mensagem } = formData;
+    const {
+      nome,
+      email,
+      telefone,
+      projeto,
+      ensinado,
+      vender,
+      modalidade,
+      mensagem,
+    } = formData;
 
     const mailOptions = {
       from: this.configService.get<string>('EMAIL_USER'),
@@ -52,10 +70,11 @@ export class MailService {
     try {
       await this.transporter.sendMail(mailOptions);
 
-      // Enviar para Mailchimp com tag "info_produto"
+      const subscriberHash = this.getSubscriberHash(email);
+
       const data = {
         email_address: email,
-        status: 'subscribed',
+        status_if_new: 'subscribed',
         merge_fields: {
           FNAME: nome,
           PHONE: telefone,
@@ -65,14 +84,16 @@ export class MailService {
           MODALIDADE: modalidade,
           MENSAGEM: mensagem,
         },
-        tags: ['info_produto'], // 🔥 TAG personalizada para Mailchimp
+        tags: ['info_produto'],
       };
 
-      await axios.post(this.mailchimpUrl, data, {
+      await axios.put(`${this.mailchimpUrl}/${subscriberHash}`, data, {
         auth: { username: 'anystring', password: this.mailchimpApiKey },
       });
 
-      return { message: 'E-mail enviado e usuário cadastrado no Mailchimp!' };
+      return {
+        message: 'E-mail enviado e usuário cadastrado/atualizado no Mailchimp!',
+      };
     } catch (error) {
       console.error('Erro:', error.response?.data || error.message);
       throw new Error('Erro ao processar solicitação');
@@ -80,7 +101,8 @@ export class MailService {
   }
 
   async novoEmail(formData2: any) {
-    const { nome, email, telefone, especialidade, tema, experiencia } = formData2;
+    const { nome, email, telefone, especialidade, tema, experiencia } =
+      formData2;
 
     const mailOptions2 = {
       from: this.configService.get<string>('EMAIL_USER'),
@@ -104,10 +126,11 @@ export class MailService {
     try {
       await this.transporter.sendMail(mailOptions2);
 
-      // Enviar para Mailchimp com tag "novo_colunista"
+      const subscriberHash = this.getSubscriberHash(email);
+
       const data = {
         email_address: email,
-        status: 'subscribed',
+        status_if_new: 'subscribed',
         merge_fields: {
           FNAME: nome,
           PHONE: telefone,
@@ -115,14 +138,16 @@ export class MailService {
           TEMA: tema,
           EXPERIENCIA: experiencia,
         },
-        tags: ['novo_colunista'], // 🔥 TAG personalizada para Mailchimp
+        tags: ['novo_colunista'],
       };
 
-      await axios.post(this.mailchimpUrl, data, {
+      await axios.put(`${this.mailchimpUrl}/${subscriberHash}`, data, {
         auth: { username: 'anystring', password: this.mailchimpApiKey },
       });
 
-      return { message: 'E-mail enviado e usuário cadastrado no Mailchimp!' };
+      return {
+        message: 'E-mail enviado e usuário cadastrado/atualizado no Mailchimp!',
+      };
     } catch (error) {
       console.error('Erro:', error.response?.data || error.message);
       throw new Error('Erro ao processar solicitação');
