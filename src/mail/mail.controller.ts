@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Body, Controller, Post } from '@nestjs/common';
 import { MailService } from './mail.service';
 
@@ -8,10 +9,5 @@ export class MailController {
   @Post('send')
   async sendMail(@Body() formData: any) {
     return this.mailService.sendEmail(formData);
-  }
-
-  @Post('send2')
-  async sendMail2(@Body() formData2: any) {
-    return this.mailService.novoEmail(formData2);
   }
 }
